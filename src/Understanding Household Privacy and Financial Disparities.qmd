@@ -1,0 +1,162 @@
+---
+title: "H8: A Gateway to Understanding Household Privacy and Financial Disparities"
+format: 
+  html: 
+    code-fold: true
+    code-overflow: scroll
+    code-link: true
+    warning : false
+    code-tools: true
+    code-block-border-left: true
+    embed-resources: true
+author: Prashant Upadhyay
+date: '2023-11-15'
+font-size: 15px
+background-color: #f8f9fa
+text-color: #212529
+heading-color: #007bff
+heading-size: 28px
+toc: true
+toc-title: Contents
+toc-style: none
+toc-indentation: 20px
+toc-number-sections: true
+toc-expand: true
+code-link: true
+bibliography: references.bib
+---
+
+## Introduction
+
+In this census data analysis, the exploration of household dynamics goes beyond just statistics, unraveling issues hidden behind closed doors. This investigation focuses on a pivotal variable, `H8`, which delves into the privacy arrangements within households. `H8`, a binary signal reflecting whether all rooms are exclusively accessible to the household, becomes a gateway to understanding the intricate correlation between household privacy and financial hurdles.
+
+The hypothesis focuses on the interesting correlation between `H8` responses and the average household income, particularly among individuals identifying as Asian. The initial premise shows that households with `H8` equal to `1`, indicative of shared room accessibility, could be associated with lower average incomes within the Asian Ethnicity of the dataset. The Exploration begins with loading data, filtering continuous variables, and finding correlations, leading to an examination of the `H8` variable and its connection to household incomes.
+
+Through visualizations, the aim is to uncover patterns that shed light on the relationships between ethnicity, privacy preferences, and socioeconomic status. The subsequent sections consist of the Correlation Matrix, Uni-variate Analysis of `H8`, subsetting data for deeper insights, and the verification of our hypothesis by comparing average household incomes. The findings promise a deeper understanding of how privacy choices within households may be linked to broader financial dynamics, unravelling the societal intricacies that resonate beyond the numbers.
+
+```{r}
+#| label: Loading packages
+#| include: true
+# Loading the required packages
+library(tidyverse)
+library(PerformanceAnalytics)
+library(ggridges)
+library(downlit)
+```
+
+## Loading Data & Filtering it
+
+After loading packages, the data is loaded and some filtering is done to the data so that we can focus on Continuous variables and check if we can find some correlation in their behavior.
+
+```{r}
+#| label: Loading Data & Data Filtering
+#Reading the data and creating a new tibble for continuous variables
+UK_census <- read.csv("D:/Prashant Uni/Data Science/data-1.csv")
+Continuous_data<-UK_census|>
+  relocate(Mar_Stat,.after = H8)|>
+    relocate(Person_ID, .after = H8)
+Continuous_data <- Continuous_data[1:5]
+```
+
+## Exploratory Data Analysis
+
+### Correlation Matrix
+
+Once the Continuous data is filtered out, the next step is to find any correlation between them using the Performance Matrix . The below @fig-Matrix displays the correlation along with some new information to provide a direction to this procedure. A conclusion can be drawn with the help of @fig-Matrix, that there is a correlation between `H8` and `INC` columns of the data.[@PerformanceAnalytics-3]
+
+```{r}
+#| label: fig-Matrix
+#| fig-cap: "Correlation Matrix on Continuous Variables."
+#Plotting the correlation Matrix
+chart.Correlation(Continuous_data, histogram = TRUE,pch=19)
+```
+
+------------------------------------------------------------------------
+
+### Uni-variate Analysis
+
+After finding the correlations using the @fig-Matrix matrix,the next step is to analyse the `H8` variable in a more detailed fashion and check if there is any pattern that could be useful and explored a bit more using ggplot . In @fig-H8 ,we plot a bar graph to see the variation in values of `H8` distributed over each ethnicity, using the correlation found in the @fig-Matrix Matrix.[@ggplot2]
+
+```{r}
+#| label: fig-H8
+#| fig-cap: "Barplot to assess the H8 variable in depth"
+#Plotting a Bar graph for H8 variable.
+ggplot(UK_census, aes(x = Eth, fill = factor(H8))) +
+  geom_bar(position = "dodge", stat = "count") +
+  labs(title = "Distribution of H8 Values by Ethnicity",
+       x = "Ethnicity",
+       y = "Count",
+       fill = "H8") +
+  scale_fill_manual(values = c("1" = "red", "0" = "blue")) +
+  theme_minimal()
+```
+
+## Subsetting Data
+
+After the Uni-variate Analysis, one conclusion can be drawn that `H8` is `1` only for Asian people and `0` for the other Ethnicities.To analyze this new information, Subsetting of the data is done so we can make some sense by using the information gained.In this process, a deeper analysis is done on whether the household income plays a role in this behaviour of the `H8` variable.[@peng2021]
+
+```{r}
+#| label: Subsetting Data
+Household_INC_H8 <- UK_census|>
+     filter(H8 == 0)|>
+     group_by(ID)|>
+     summarise(Household_INC = mean(INC, na.rm = TRUE))|>
+     arrange(Household_INC)
+
+Household_INC_nonH8 <- UK_census|>
+     filter(H8 == 1)|>
+     group_by(ID)|>
+     summarise(Household_INC = mean(INC, na.rm = TRUE))|>
+     arrange(Household_INC)
+```
+
+## Hypothesis Verification
+
+In this section, a verification is done in @fig-Comparison on whether the `H8` being `1` for only Asian people is something related to their average household incomes. This is done by comparing the average household income of Asian people from @fig-Comparison-1 with the rest of the crowd from @fig-Comparison-2 by placing the average household income of Asian people and the rest of the crowd together in @fig-Comparison.\[@kartik2018\]\[@ggridges-2\]
+
+```{r}
+#| label: fig-Comparison
+#| fig-cap: "Comparing the average incomes of Households with and without H8"
+#| fig-subcap:
+#|   - "The mean income of households with H8 is: 35843.21"
+#|   - "The mean income of households without H8 is: 56308.17 "
+#| layout-ncol: 2
+#| column: page
+#Plotting the 2 graphs together for comparison
+
+ggplot(Household_INC_nonH8, aes(x = Household_INC, y = stat(density))) +
+  geom_histogram(bins = 20, fill = "#69b3a2", color = "#404040", alpha = 0.7) +
+  geom_density(color = "#7e7e7e", fill = "#69b3a2", alpha = 0.3) +
+  geom_vline(aes(xintercept = mean(Household_INC)), linetype = 2, color = "#e41a1c") +
+  labs(title = "Income of Households with H8",
+       x = "Income of Households",
+       y = "Density") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12, face = "bold"),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        legend.position = "none")
+
+ggplot(Household_INC_H8, aes(x = Household_INC, y = stat(density))) +
+  geom_histogram(bins = 20, fill = "#69b3a2", color = "#404040", alpha = 0.7) +
+  geom_density(color = "#7e7e7e", fill = "#69b3a2", alpha = 0.3) +
+  geom_vline(aes(xintercept = mean(Household_INC)), linetype = 2, color = "#e41a1c") +
+  labs(title = "Income of Households without H8",
+       x = "Income of Households",
+       y = "Density") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12, face = "bold"),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        legend.position = "none")
+```
+
+## Conclusion
+
+The analysis of census data reveals a compelling connection between household privacy (`H8`) and financial disparities, notably among the Asian demographic. The Uni-variate Analysis underscores `H8`'s distribution, emphasizing its prevalence among Asians.
+
+The correlation matrix exposes relationships, with H8 correlating notably with income (`INC`). Subsetting Data confirms Asians, with `H8` at `1`, have lower average incomes. This highlights a trend where privacy compromises align with economic considerations.
+
+In essence, this exploration unveils an interesting interplay between household privacy choices and broader financial dynamics, particularly prominent in the dataset's Asian population.
